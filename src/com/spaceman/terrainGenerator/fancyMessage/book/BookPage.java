@@ -1,46 +1,70 @@
 package com.spaceman.terrainGenerator.fancyMessage.book;
 
+import com.spaceman.terrainGenerator.fancyMessage.Message;
 import com.spaceman.terrainGenerator.fancyMessage.TextComponent;
+import org.bukkit.ChatColor;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 
 public class BookPage {
-
-    private ArrayList<TextComponent> text = new ArrayList<>();
-
+    
+    private int pageNumber;
+    private Message message;
+    
     public BookPage() {
+        message = new Message();
     }
-
+    
     public BookPage(TextComponent text) {
-        this.text.add(text);
+        this();
+        addText(text);
     }
-
-    public static BookPage newBookPage() {
-        return new BookPage();
+    
+    public static String getActivePageReplacer() {
+        return "{APN}";
     }
-
-    public static BookPage newBookPage(TextComponent text) {
-        return new BookPage(text);
-    }
-
+    
     public void addText(TextComponent... text) {
-        this.text.addAll(Arrays.asList(text));
+        this.message.addText(text);
     }
-
-    public ArrayList<TextComponent> getText() {
-        return text;
-    }
-
+    
     public void removeLast() {
-        text.remove(text.size() - 1);
+        message.removeLast();
     }
-
+    
     public void addText(String simpleText) {
-        addText(TextComponent.textComponent(simpleText));
+        message.addText(simpleText);
     }
-
-    public void addWhiteSpace() {
-        addText(" ");
+    
+    public void addText(String simpleText, ChatColor color) {
+        message.addText(simpleText, color);
+    }
+    
+    public void addMessage(Message message) {
+        this.message.addMessage(message);
+    }
+    
+    public ArrayList<TextComponent> getText() {
+        return message.getText();
+    }
+    
+    public void setMessage(Message message) {
+        this.message = message;
+    }
+    
+    public Message getMessage() {
+        return message;
+    }
+    
+    public int getPageNumber() {
+        return pageNumber;
+    }
+    
+    public void setPageNumber(int pageNumber) {
+        this.pageNumber = pageNumber;
+    }
+    
+    public String translateJSON(Message.TranslateMode mode) {
+        return "\"" + message.translateJSON(mode).replace(getActivePageReplacer(), String.valueOf(pageNumber)) + "\"";
     }
 }

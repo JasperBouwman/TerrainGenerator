@@ -1,270 +1,301 @@
 package com.spaceman.terrainGenerator.fancyMessage;
 
+import com.spaceman.terrainGenerator.Main;
+import com.spaceman.terrainGenerator.fancyMessage.book.Book;
 import com.spaceman.terrainGenerator.fancyMessage.book.BookPage;
+import com.spaceman.terrainGenerator.fancyMessage.events.ClickEvent;
 import com.spaceman.terrainGenerator.fancyMessage.events.HoverEvent;
+import com.spaceman.terrainGenerator.fancyMessage.events.ScoreEvent;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.stream.Collectors;
 
 import static com.spaceman.terrainGenerator.fancyMessage.TextComponent.textComponent;
 
 public class Message {
-
+    
+    public static final String PLACE_HOLDER = "%s";
     private ArrayList<TextComponent> components = new ArrayList<>();
-
+    
     public Message() {
     }
-
+    
     public Message(TextComponent text) {
         this.components.add(text);
     }
-
-    public static Message message() {
-        return new Message();
+    
+    public Message(TextComponent... text) {
+        this.components.addAll(Arrays.asList(text));
     }
-
+    
+    public Message(String simpleText, ChatColor color) {
+        this.components.add(textComponent(simpleText, color));
+    }
+    
+    public static void testAll(Player player) {
+        Message message = new Message();
+        
+        TextComponent newLine = new TextComponent("\n");
+        
+        TextComponent color1 = new TextComponent("c", ChatColor.GREEN);
+        TextComponent color2 = new TextComponent("o", ChatColor.RED);
+        TextComponent color3 = new TextComponent("l", ChatColor.BLUE);
+        TextComponent color4 = new TextComponent("o", ChatColor.LIGHT_PURPLE);
+        TextComponent color5 = new TextComponent("r", ChatColor.YELLOW);
+        color1.addAttribute(Attribute.BOLD);
+        color2.addAttribute(Attribute.ITALIC);
+        color3.addAttribute(Attribute.OBFUSCATED);
+        color4.addAttribute(Attribute.STRIKETHROUGH);
+        color5.addAttribute(Attribute.UNDERLINE);
+        
+        TextComponent hover = new TextComponent("hover event", ChatColor.RED);
+        HoverEvent hoverEvent = new HoverEvent();
+        hoverEvent.addText(color1, color2, color3, color4, color5);
+        hover.addTextEvent(hoverEvent);
+        
+        TextComponent runCommand = new TextComponent("run command /say hi", ChatColor.BLUE);
+        runCommand.addTextEvent(new ClickEvent(ClickEvent.RUN_COMMAND, "/say hi"));
+        TextComponent openURL = new TextComponent("open url https://noot.space", ChatColor.DARK_RED);
+        openURL.addTextEvent(new ClickEvent(ClickEvent.OPEN_URL, "https://noot.space"));
+        TextComponent suggestCommand = new TextComponent("run command /say hi", ChatColor.DARK_PURPLE);
+        suggestCommand.addTextEvent(new ClickEvent(ClickEvent.SUGGEST_COMMAND, "/say hi"));
+        TextComponent changePage = new TextComponent("open page 2", ChatColor.GREEN);
+        changePage.addTextEvent(new ClickEvent(ClickEvent.CHANGE_PAGE, "2"));
+        TextComponent copyText = new TextComponent("click to copy this", ChatColor.GREEN);
+        copyText.addTextEvent(new ClickEvent(ClickEvent.COPY_TO_CLIPBOARD, "copied this"));
+    
+        TextComponent scoreText = new TextComponent("score: ", ChatColor.DARK_GREEN);
+        TextComponent score = new TextComponent();
+        score.setColor(ChatColor.GREEN);
+        score.addTextEvent(new ScoreEvent("The_Spaceman", "dummyObjective"));
+    
+        TextComponent keybind = new TextComponent(Keybinds.DROP, ChatColor.DARK_AQUA);
+        keybind.setType(TextType.KEYBIND);
+        TextComponent keybindText = new TextComponent(" is your drop key", ChatColor.AQUA);
+    
+        TextComponent selector = new TextComponent("@p", ChatColor.GRAY).setType(TextType.SELECTOR);
+        TextComponent selectorText = new TextComponent(" should be your name", ChatColor.DARK_GRAY);
+    
+        TextComponent translateTitle = new TextComponent("gui.toTitle", ChatColor.GOLD).setType(TextType.TRANSLATE);
+    
+        TextComponent translateWith = new TextComponent("with 1 '%s', with 2 '%s'", ChatColor.RED).setType(TextType.TRANSLATE);
+        translateWith.addTranslateWith(new TextComponent("1", ChatColor.BLUE), new TextComponent("2", ChatColor.BLACK));
+    
+        message.addText(color1, color2, color3, color4, color5, newLine,
+                hover, newLine,
+                runCommand, newLine,
+                openURL, newLine,
+                suggestCommand, newLine,
+                changePage, newLine,
+                copyText, newLine,
+                scoreText, score, newLine,
+                keybind, keybindText, newLine,
+                selector, selectorText, newLine,
+                translateTitle, newLine,
+                translateWith
+        );
+        
+        message.sendMessage(player);
+        
+        Book book = new Book("All functions", "The_Spaceman");
+        BookPage page = book.createPage();
+        page.addMessage(message);
+        book.createPage();
+        book.openBook(player);
+        
+        player.getInventory().addItem(book.getWritableBook());
+        player.getInventory().addItem(book.getWrittenBook());
+    }
+    
+    public static String indexedPlaceHolder(int index) {
+        return "%" + index + "$s";
+    }
+    
     public void removeLast() {
         this.components.remove(components.size() - 1);
     }
-
+    
     public void addText(TextComponent... text) {
         this.components.addAll(Arrays.asList(text));
     }
-
+    
     public void addText(String simpleText) {
         addText(textComponent(simpleText));
     }
-
+    
+    public void addText(String simpleText, ChatColor color) {
+        addText(textComponent(simpleText, color));
+    }
+    
+    public void removeText(String simpleText) {
+        ArrayList<TextComponent> toRemove = new ArrayList<>();
+        for (TextComponent component : components) {
+            if (component.getText().equals(simpleText)) {
+                toRemove.add(component);
+            }
+        }
+        components.removeAll(toRemove);
+    }
+    
+    public void removeText(TextComponent textComponent) {
+        components.remove(textComponent);
+    }
+    
+    public void addMessage(Message message) {
+        if (message != null) {
+            this.components.addAll(message.getText());
+        }
+    }
+    
+    public void removeMessage(Message message) {
+        for (TextComponent textComponent : message.getText()) {
+            removeText(textComponent);
+        }
+    }
+    
     public void addWhiteSpace() {
         addText(" ");
     }
-
+    
     public ArrayList<TextComponent> getText() {
         return components;
     }
-
+    
     public void clearMessage() {
         components.clear();
     }
-
+    
+    public boolean isEmpty() {
+        return components.isEmpty();
+    }
+    
     public void sendTitle(Player player, TitleTypes titleTypes) {
         sendTitle(player, titleTypes.name(), -1, -1, -1);
     }
-
+    
     public void sendTitle(Player player, String titleTypes) {
         sendTitle(player, titleTypes, -1, -1, -1);
     }
-
+    
     public void sendTitle(Player player, TitleTypes titleType, int fadeIn, int displayTime, int fadeOut) {
         sendTitle(player, titleType.name(), fadeIn, displayTime, fadeOut);
     }
-
+    
     public void sendTitle(Player player, String titleType, int fadeIn, int displayTime, int fadeOut) {
-
+        
         boolean b = true;
         for (TitleTypes type : TitleTypes.values()) {
             if (type.name().equalsIgnoreCase(titleType)) {
                 b = false;
+                break;
             }
         }
         if (b) {
             titleType = "title";
         }
-
+        
         try {
-
+            
             String version = Bukkit.getServer().getClass().getPackage().getName().replace(".", ",").split(",")[3];
             Object nmsPlayer = player.getClass().getMethod("getHandle").invoke(player);
             Object connection = nmsPlayer.getClass().getField("playerConnection").get(nmsPlayer);
             Class<?> chatSerializer = Class.forName("net.minecraft.server." + version + ".IChatBaseComponent$ChatSerializer");
             Class<?> chatComponent = Class.forName("net.minecraft.server." + version + ".IChatBaseComponent");
-
+            
             Class<?> packet = Class.forName("net.minecraft.server." + version + ".PacketPlayOutTitle");
-
-            String message = new Translate(components).translate.toString();
-
+            
+            String message = translateJSON();
+            
             Class enumClass = Class.forName("net.minecraft.server." + version + ".PacketPlayOutTitle$EnumTitleAction");
             Field actionF = enumClass.getDeclaredField(titleType.toUpperCase());
             actionF.setAccessible(true);
-
+            
             Constructor constructor = packet.getConstructor(enumClass, chatComponent, int.class, int.class, int.class);
-
+            
             Object text = chatSerializer.getMethod("a", String.class).invoke(chatSerializer, message);
             Object packetFinal = constructor.newInstance(actionF.get(null), text, fadeIn, displayTime, fadeOut);
-
+            
             connection.getClass().getMethod("sendPacket", Class.forName("net.minecraft.server." + version + ".Packet")).invoke(connection, packetFinal);
-
+            
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-
-
     }
-
+    
+    public void sendMessage(Player player) {
+        
+        try {
+            String version = Bukkit.getServer().getClass().getPackage().getName().replace(".", ",").split(",")[3];
+            Object nmsPlayer = player.getClass().getMethod("getHandle").invoke(player);
+            Object connection = nmsPlayer.getClass().getField("playerConnection").get(nmsPlayer);
+            Class<?> chatSerializer = Class.forName("net.minecraft.server." + version + ".IChatBaseComponent$ChatSerializer");
+            Class<?> chatComponent = Class.forName("net.minecraft.server." + version + ".IChatBaseComponent");
+            
+            Class<?> packet = Class.forName("net.minecraft.server." + version + ".PacketPlayOutChat");
+            
+            Constructor constructor = packet.getConstructor(chatComponent);
+            
+            String message = translateJSON();
+            
+            Object text = chatSerializer.getMethod("a", String.class).invoke(chatSerializer, message);
+            Object packetFinal = constructor.newInstance(text);
+            
+            Field field = packetFinal.getClass().getDeclaredField("a");
+            field.setAccessible(true);
+            field.set(packetFinal, text);
+            connection.getClass().getMethod("sendPacket", Class.forName("net.minecraft.server." + version + ".Packet")).invoke(connection, packetFinal);
+            
+            
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+    
+    public void broadcast() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            this.sendMessage(player);
+        }
+    }
+    
+    public String translateJSON() {
+        return translateJSON(TranslateMode.MESSAGE);
+    }
+    
+    public String translateJSON(TranslateMode mode) {
+        
+        if (mode == TranslateMode.WRITABLE_BOOk) {
+            return components.stream().map(TextComponent::getText).collect(Collectors.joining());
+        }
+        
+        String q = mode.getQuote();
+        return components.stream().map(textComponent -> "," + textComponent.translateJSON(mode)).collect(Collectors.joining("", "[" + q + q, "]"));
+    }
+    
     public enum TitleTypes {
         TITLE,
         ACTIONBAR,
         SUBTITLE
     }
-
-    public void sendMessage(Player player) {
-
-        try {
-            String version = Bukkit.getServer().getClass().getPackage().getName().replace(".", ",").split(",")[3];
-            Object nmsPlayer = player.getClass().getMethod("getHandle").invoke(player);
-            Object connection = nmsPlayer.getClass().getField("playerConnection").get(nmsPlayer);
-            Class<?> chatSerializer = Class.forName("net.minecraft.server." + version + ".IChatBaseComponent$ChatSerializer");
-            Class<?> chatComponent = Class.forName("net.minecraft.server." + version + ".IChatBaseComponent");
-
-            Class<?> packet = Class.forName("net.minecraft.server." + version + ".PacketPlayOutChat");
-
-            Constructor constructor = packet.getConstructor(chatComponent);
-
-            String message = new Translate(components).translate.toString();
-
-            Object text = chatSerializer.getMethod("a", String.class).invoke(chatSerializer, message);
-            Object packetFinal = constructor.newInstance(text);
-
-            Field field = packetFinal.getClass().getDeclaredField("a");
-            field.setAccessible(true);
-            field.set(packetFinal, text);
-            connection.getClass().getMethod("sendPacket", Class.forName("net.minecraft.server." + version + ".Packet")).invoke(connection, packetFinal);
-
-        } catch (Exception ex) {
-            ex.printStackTrace();
+    
+    public enum TranslateMode {
+        MESSAGE("\""),
+        WRITTEN_BOOK("\\\""),
+        WRITABLE_BOOk("\"");
+        
+        private String quote;
+        
+        TranslateMode(String quote) {
+            this.quote = quote;
         }
-
-    }
-
-    public static class Translate {
-
-        public StringBuilder translate;
-
-        public Translate(String title, String author, ArrayList<BookPage> pages) {
-
-            translate = new StringBuilder("{pages:[");
-
-            if (pages != null && !pages.isEmpty()) {
-
-                int pageNumber = 1;
-                for (BookPage page : pages) {
-                    translate.append("\"[\\\"\\\",");
-                    translate.append(translatePage(page));
-                    translate.append("]\"").append(pageNumber < pages.size() ? "," : "");
-                    pageNumber++;
-                }
-            }
-
-            translate.append(String.format("],\"title\":\"%s\",\"author\":\"%s\"}", title, author));
-        }
-
-        private Translate(ArrayList<TextComponent> texts) {
-            translate = new StringBuilder();
-
-            int textNumber = 1;
-
-            for (TextComponent textComponent : texts) {
-
-                if (textNumber == 1) {
-                    translate.append("[\"\",");
-                }
-
-                translate.append(String.format("{\"text\":\"%s\",\"color\":\"%s\"%s%s%s}",
-                        textComponent.getText(),
-                        textComponent.getColor(),
-
-                        translateAttributes2(textComponent),
-
-                        (textComponent.hasClickEvent() ? String.format(",\"clickEvent\":{\"action\":\"%s\",\"value\":\"%s\"}",
-                                textComponent.getClickEvent().getClickEvent(), textComponent.getClickEvent().getValue()) : ""),
-
-                        (textComponent.hasHoverEvent() ? String.format("%s", translateHoverEvent2(textComponent.getHoverEvent())) : "")))
-
-                        .append(textNumber < texts.size() ? "," : "");
-                textNumber++;
-            }
-            translate.append("]");
-        }
-
-        private String translatePage(BookPage page) {
-
-            StringBuilder str = new StringBuilder();
-            int textNumber = 1;
-
-            for (TextComponent textComponent : page.getText()) {
-
-                if (textNumber == 1) {
-                    str.append("\\\"\\\",");
-                }
-
-                str.append(String.format("{\\\"text\\\":\\\"%s\\\",\\\"color\\\":\\\"%s\\\"%s%s%s}",
-                        textComponent.getText(),
-                        textComponent.getColor(),
-
-                        translateAttributes(textComponent),
-
-                        (textComponent.hasClickEvent() ? String.format(",\\\"clickEvent\\\":{\\\"action\\\":\\\"%s\\\",\\\"value\\\":\\\"%s\\\"}",
-                                textComponent.getClickEvent().getClickEvent(), textComponent.getClickEvent().getValue()) : ""),
-
-                        (textComponent.hasHoverEvent() ? String.format("%s", translateHoverEvent(textComponent.getHoverEvent())) : "")))
-
-
-                        .append(textNumber < page.getText().size() ? "," : "");
-                textNumber++;
-            }
-            return str.toString();
-        }
-
-        private String translateAttributes(TextComponent textComponent) {
-            StringBuilder str = new StringBuilder();
-            for (Attribute attribute : textComponent.getAttributes()) {
-                str.append(String.format(",\\\"%s\\\":\\\"true\\\"", attribute.name().toLowerCase()));
-            }
-            return str.toString();
-        }
-
-        private String translateAttributes2(TextComponent textComponent) {
-            StringBuilder str = new StringBuilder();
-            for (Attribute attribute : textComponent.getAttributes()) {
-                str.append(String.format(",\"%s\":\"true\"", attribute.name().toLowerCase()));
-            }
-            return str.toString();
-        }
-
-        private String translateHoverEvent(HoverEvent hoverEvent) {
-            StringBuilder str = new StringBuilder(",\\\"hoverEvent\\\":{\\\"action\\\":\\\"show_text\\\",\\\"value\\\":{\\\"text\\\":\\\"\\\",\\\"extra\\\":[");
-            int textNumber = 1;
-
-            for (TextComponent textComponent : hoverEvent.getText()) {
-                str.append(String.format("{\\\"text\\\":\\\"%s\\\",\\\"color\\\":\\\"%s\\\"%s}", textComponent.getText(), textComponent.getColor(), translateAttributes(textComponent)))
-
-                        .append(textNumber < hoverEvent.getText().size() ? "," : "");
-                textNumber++;
-            }
-
-            str.append("]}}");
-
-            return str.toString();
-        }
-
-        private String translateHoverEvent2(HoverEvent hoverEvent) {
-            StringBuilder str = new StringBuilder(",\"hoverEvent\":{\"action\":\"show_text\",\"value\":{\"text\":\"\",\"extra\":[");
-            int textNumber = 1;
-
-            for (TextComponent textComponent : hoverEvent.getText()) {
-                str.append(String.format("{\"text\":\"%s\",\"color\":\"%s\"%s}", textComponent.getText(), textComponent.getColor(), translateAttributes2(textComponent)))
-
-                        .append(textNumber < hoverEvent.getText().size() ? "," : "");
-                textNumber++;
-            }
-
-            str.append("]}}");
-
-            return str.toString();
+        
+        public String getQuote() {
+            return quote;
         }
     }
 }

@@ -1,38 +1,50 @@
 package com.spaceman.terrainGenerator.modes;
 
-import com.spaceman.terrainGenerator.terrain.*;
-import org.bukkit.ChatColor;
+import com.spaceman.terrainGenerator.terrain.TerrainGenData;
+import com.spaceman.terrainGenerator.terrain.TerrainUtils;
+import com.spaceman.terrainGenerator.terrain.generators.TerrainGenerator;
+import com.spaceman.terrainGenerator.terrain.generators.WorldGenerator;
+import com.spaceman.terrainGenerator.terrain.terrainMode.DataMode;
+import com.spaceman.terrainGenerator.terrain.terrainMode.TerrainMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 
-import static com.spaceman.terrainGenerator.terrain.TerrainGenerator.GenData.*;
+import static com.spaceman.terrainGenerator.terrain.TerrainCore.setType;
+import static com.spaceman.terrainGenerator.terrain.generators.TerrainGenerator.GenData.*;
 
-@SuppressWarnings("unused, WeakerAccess, unchecked")
-public class AddLava extends TerrainMode.DataBased<Integer> {
+public class AddLava extends DataMode<Integer> {
 
     public AddLava() {
         setModeData(-1);
     }
-
-    @Override
-    public void saveMode(String savePath) {
-        TerrainUtils.saveDataInteger(savePath, getModeData());
+    public AddLava(int i) {
+        setModeData(i);
     }
 
     @Override
-    public DataBased getMode(String savePath, DataBased templateMode) {
-        return TerrainUtils.getDataInteger(savePath, templateMode);
+    public void saveMode(ConfigurationSection section) {
+        TerrainUtils.saveDataInteger(section, getModeData());
     }
 
     @Override
-    public String getModeName() {
-        return "addLava";
+    public TerrainMode loadMode(ConfigurationSection section) {
+        return TerrainUtils.getDataInteger(section, this);
+    }
+
+    @Override
+    public void setData(LinkedList<String> data, Player player) {
+        TerrainUtils.setDataInteger(data, player, this);
+    }
+
+    @Override
+    public String getInsertion() {
+        return String.valueOf(getModeData());
     }
 
     @Override
@@ -46,20 +58,8 @@ public class AddLava extends TerrainMode.DataBased<Integer> {
     }
 
     @Override
-    public void setData(LinkedList<String> data, Player player) {
-        if (data != null) {
-            if (data.size() >= 1) {
-                try {
-                    int i = Integer.parseInt(data.get(0));
-                    setModeData(i);
-                    player.sendMessage(ChatColor.DARK_AQUA + "TerrainMode " + getModeName() + " is now set to " + i);
-                } catch (NumberFormatException nfe) {
-                    player.sendMessage(ChatColor.RED + "Given data is not a valid number");
-                }
-            } else {
-                player.sendMessage(ChatColor.RED + "Missing data");
-            }
-        }
+    public String getModeName() {
+        return "addLava";
     }
 
     @Override
@@ -78,11 +78,12 @@ public class AddLava extends TerrainMode.DataBased<Integer> {
                 if (chunkData != null) {
                     chunkData.setBlock(y, Material.LAVA);
                 } else {
-                    setType(new Location(locData.getWorld(), x, y, z).getBlock(), new ItemStack(Material.LAVA));
+                    setType(new Location(locData.getWorld(), x, y, z).getBlock(), Material.LAVA);
                 }
             } else {
                 return;
             }
         }
     }
+
 }

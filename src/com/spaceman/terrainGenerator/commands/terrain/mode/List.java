@@ -1,138 +1,135 @@
 package com.spaceman.terrainGenerator.commands.terrain.mode;
 
-import com.spaceman.terrainGenerator.commands.CmdHandler;
+import com.spaceman.terrainGenerator.ColorFormatter;
+import com.spaceman.terrainGenerator.commandHander.ArgumentType;
+import com.spaceman.terrainGenerator.commandHander.EmptyCommand;
+import com.spaceman.terrainGenerator.commandHander.SubCommand;
+import com.spaceman.terrainGenerator.commands.TabCompletes;
 import com.spaceman.terrainGenerator.fancyMessage.Message;
 import com.spaceman.terrainGenerator.fancyMessage.events.HoverEvent;
-import com.spaceman.terrainGenerator.terrain.TerrainMode;
+import com.spaceman.terrainGenerator.terrain.TerrainGenData;
+import com.spaceman.terrainGenerator.terrain.terrainMode.TerrainMode;
+import com.spaceman.terrainGenerator.terrain.terrainMode.TerrainModeInverse;
+import com.spaceman.terrainGenerator.terrain.terrainMode.TerrainModeWaterLoggable;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedList;
 
+import static com.spaceman.terrainGenerator.ColorFormatter.formatError;
+import static com.spaceman.terrainGenerator.ColorFormatter.infoColor;
 import static com.spaceman.terrainGenerator.fancyMessage.TextComponent.textComponent;
 import static com.spaceman.terrainGenerator.fancyMessage.events.HoverEvent.hoverEvent;
-import static com.spaceman.terrainGenerator.terrain.TerrainMode.getModes;
-import static com.spaceman.terrainGenerator.terrain.TerrainMode.getNewMode;
+import static com.spaceman.terrainGenerator.terrain.TerrainCore.getGen;
+import static com.spaceman.terrainGenerator.terrain.terrainMode.TerrainMode.getModes;
+import static com.spaceman.terrainGenerator.terrain.terrainMode.TerrainMode.getNewMode;
 
-public class List extends CmdHandler {
+public class List extends SubCommand {
+    
+    public List() {
+        EmptyCommand emptyCommand = new EmptyCommand();
+        emptyCommand.setCommandName("name", ArgumentType.OPTIONAL);
+        emptyCommand.setCommandDescription(textComponent("This command is used to list all TerrainModes in the given TerrainGenerator", infoColor));
+        addAction(emptyCommand);
+    }
+    
     @Override
-    public String alias() {
-        return "l";
+    public Message getCommandDescription() {
+        return new Message(textComponent("This command is used to list all available TerrainModes", infoColor));
+    }
+    
+    @Override
+    public Collection<String> tabList(Player player, String[] args) {
+        return TabCompletes.availableGenerators();
     }
 
     @Override
     public void run(String[] args, Player player) {
+        //terrain mode list [name]
 
-        Message message = new Message();
-        message.addText(textComponent("Available TerrainModes are: ", ChatColor.DARK_AQUA));
+        if (args.length == 3) {
+            TerrainGenData genData = getGen(args[2]);
+            if (genData != null) {
+                Message message = new Message();
+                message.addText(textComponent("TerrainModes in TerrainGenerator ", ColorFormatter.infoColor));
+                message.addText(textComponent(genData.getName(), ColorFormatter.varInfoColor, genData.toHoverEvent()));
+                message.addText(textComponent(": ", ColorFormatter.infoColor));
+                message.addText(textComponent(""));
 
-        for (String mode : getModes()) {
+                boolean b = true;
 
-            TerrainMode terrainMode = getNewMode(mode);
-            if (terrainMode == null) {
-                continue;
-            }
+                for (TerrainMode mode : genData.getModes()) {
+                    HoverEvent hEvent = terrainModeToHEvent(mode);
 
-            HoverEvent hEvent = hoverEvent(textComponent("Description: ", ChatColor.DARK_AQUA));
-            hEvent.addText(textComponent(ChatColor.BLUE + terrainMode.getModeDescription() + ChatColor.BLUE, ChatColor.BLUE));
-            hEvent.addText(textComponent("\nIs final mode: ", ChatColor.DARK_AQUA));
-            if (terrainMode.isFinalMode()) {
-                hEvent.addText(textComponent("True", ChatColor.GREEN));
+                    if (b) {
+                        message.addText(textComponent(mode.getModeName(), ColorFormatter.varInfoColor, hEvent));
+                    } else {
+                        message.addText(textComponent(mode.getModeName(), ColorFormatter.varInfo2Color, hEvent));
+                    }
+                    b = !b;
+                    message.addText(textComponent(", ", ColorFormatter.infoColor));
+                }
+                message.removeLast();
+
+                message.sendMessage(player);
             } else {
-                hEvent.addText(textComponent("False", ChatColor.RED));
+                player.sendMessage(formatError("TerrainGenerator %s was not found", args[2]));
             }
-            hEvent.addText(textComponent("\nModeType: ", ChatColor.DARK_AQUA));
-            if (terrainMode instanceof TerrainMode.DataBased) {
-                hEvent.addText(textComponent("DataBased", ChatColor.BLUE));
+        } else if (args.length == 2) {
+            Message message = new Message();
+            message.addText(textComponent("Available TerrainModes are: ", ColorFormatter.infoColor));
+            message.addText(textComponent(""));
+            boolean b = true;
+            for (String mode : getModes()) {
 
-                hEvent.addText(textComponent("\nDefault value: ", ChatColor.DARK_AQUA));
-
-                Object o = ((TerrainMode.DataBased) terrainMode).getModeData();
-                if (o != null) {
-                    hEvent.addText(textComponent(o.toString(), ChatColor.BLUE));
-                } else {
-                    hEvent.addText(textComponent("null", ChatColor.BLUE));
+                TerrainMode terrainMode = getNewMode(mode);
+                if (terrainMode == null) {
+                    continue;
                 }
-            } else if (terrainMode instanceof TerrainMode.MapBased) {
-                hEvent.addText(textComponent("MapBased", ChatColor.BLUE));
 
-                hEvent.addText(textComponent("\nDefault value: ", ChatColor.DARK_AQUA));
+                HoverEvent hEvent = terrainModeToHEvent(terrainMode);
 
-                HashMap<?, ?> map = ((TerrainMode.MapBased) terrainMode).getModeData();
-                if (map != null) {
-                    boolean b = false;
-
-                    for (Object o : map.keySet()) {
-
-                        StringBuilder str = new StringBuilder();
-
-                        if (map.get(o) instanceof Collection) {
-                            Collection c = (Collection) map.get(o);
-                            boolean b1 = false;
-                            for (Object v : c) {
-                                str.append(v.toString()).append(", ");
-
-                                b1 = true;
-                            }
-                            String s = str.toString();
-                            if (b1) {
-                                s = s.substring(0, s.length() - 2);
-                            }
-
-                            String k = o.toString();
-                            String v = s;
-
-                            str.append("{").append(k).append("=").append(v).append("}");
-
-                            hEvent.addText(textComponent(str.toString(), ChatColor.BLUE));
-                            hEvent.addText(textComponent(", ", ChatColor.DARK_AQUA));
-                            b = true;
-
-                        } else {
-                            Object oV = map.get(o);
-
-                            String k = o.toString();
-                            String v = oV.toString();
-
-                            str.append("{").append(k).append("=").append(v).append("}");
-
-                            hEvent.addText(textComponent(str.toString(), ChatColor.BLUE));
-                            hEvent.addText(textComponent(", ", ChatColor.DARK_AQUA));
-                            b = true;
-                        }
-
-                    }
-                    if (b) hEvent.removeLast();
+                if (b) {
+                    message.addText(textComponent(terrainMode.getModeName(), ColorFormatter.varInfoColor, hEvent));
                 } else {
-                    hEvent.addText(textComponent("null", ChatColor.BLUE));
+                    message.addText(textComponent(terrainMode.getModeName(), ColorFormatter.varInfo2Color, hEvent));
                 }
-            } else if (terrainMode instanceof TerrainMode.ArrayBased) {
-                hEvent.addText(textComponent("ArrayBased", ChatColor.BLUE));
-
-                hEvent.addText(textComponent("\nDefault value: ", ChatColor.DARK_AQUA));
-
-                LinkedList<?> list = ((TerrainMode.ArrayBased) terrainMode).getModeData();
-                if (list != null) {
-                    boolean b = false;
-                    for (Object o : list) {
-                        hEvent.addText(textComponent(o.toString(), ChatColor.BLUE));
-                        hEvent.addText(textComponent(", ", ChatColor.DARK_AQUA));
-                        b = true;
-                    }
-                    if (b) hEvent.removeLast();
-                } else {
-                    hEvent.addText(textComponent("null", ChatColor.BLUE));
-                }
+                b = !b;
+                message.addText(textComponent(", ", ColorFormatter.infoColor));
             }
 
-            message.addText(textComponent(terrainMode.getModeName(), ChatColor.BLUE, hEvent));
-            message.addText(textComponent(", ", ChatColor.DARK_BLUE));
+            message.removeLast();
+            message.sendMessage(player);
+        } else {
+            player.sendMessage(formatError("Usage: %s", "/terrain mode list [name]"));
+        }
+    }
+
+    private HoverEvent terrainModeToHEvent(TerrainMode mode) {
+        HoverEvent hEvent = hoverEvent(textComponent("Description: ", ColorFormatter.infoColor));
+        hEvent.addText(textComponent(ColorFormatter.varInfoColor + mode.getModeDescription() + ColorFormatter.varInfoColor, ColorFormatter.varInfoColor));
+        hEvent.addText(textComponent("\nIs final mode: ", ColorFormatter.infoColor));
+        if (mode.isFinalMode()) {
+            hEvent.addText(textComponent("True", ChatColor.GREEN));
+        } else {
+            hEvent.addText(textComponent("False", ChatColor.RED));
+        }
+        hEvent.addText(textComponent("\nIs inverse able mode: ", ColorFormatter.infoColor));
+        if (mode instanceof TerrainModeInverse) {
+            hEvent.addText(textComponent("True", ChatColor.GREEN));
+        } else {
+            hEvent.addText(textComponent("False", ChatColor.RED));
+        }
+        hEvent.addText(textComponent("\nIs WaterLoggable mode: ", ColorFormatter.infoColor));
+        if (mode instanceof TerrainModeWaterLoggable) {
+            hEvent.addText(textComponent("True", ChatColor.GREEN));
+        } else {
+            hEvent.addText(textComponent("False", ChatColor.RED));
         }
 
-        message.removeLast();
-        message.sendMessage(player);
+        hEvent.addText(textComponent("\nData: ", ColorFormatter.infoColor));
+        hEvent.addMessage(mode.dataAsString());
 
+        return hEvent;
     }
 }

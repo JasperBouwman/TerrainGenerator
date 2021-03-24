@@ -1,33 +1,67 @@
 package com.spaceman.terrainGenerator;
 
 import com.spaceman.terrainGenerator.commands.Terrain;
-import com.spaceman.terrainGenerator.events.WorldEvents;
 import com.spaceman.terrainGenerator.fileHander.GettingFiles;
 import com.spaceman.terrainGenerator.modes.*;
+import com.spaceman.terrainGenerator.terrain.TerrainBlockData;
+import com.spaceman.terrainGenerator.terrain.biome.BiomeSettings;
+import com.spaceman.terrainGenerator.terrain.terrainNoise.Flatlands;
+import com.spaceman.terrainGenerator.terrain.terrainNoise.SimplexOctaveNoise;
 import org.bukkit.Bukkit;
+import org.bukkit.configuration.serialization.ConfigurationSerialization;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.Arrays;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
-import static com.spaceman.terrainGenerator.terrain.TerrainGenerator.initGenerators;
-import static com.spaceman.terrainGenerator.terrain.TerrainGenerator.saveGenerators;
-import static com.spaceman.terrainGenerator.terrain.TerrainMode.registerModes;
-import static com.spaceman.terrainGenerator.terrain.WorldGenerator.initTerrainWorlds;
-import static com.spaceman.terrainGenerator.terrain.WorldGenerator.saveTerrainWorlds;
+import static com.spaceman.terrainGenerator.fileHander.GettingFiles.getFiles;
+import static com.spaceman.terrainGenerator.terrain.TerrainCore.initGenerators;
+import static com.spaceman.terrainGenerator.terrain.TerrainCore.saveGenerators;
+import static com.spaceman.terrainGenerator.terrain.generators.WorldGenerator.initTerrainWorlds;
+import static com.spaceman.terrainGenerator.terrain.generators.WorldGenerator.saveTerrainWorlds;
+import static com.spaceman.terrainGenerator.terrain.terrainMode.TerrainMode.registerModes;
+import static com.spaceman.terrainGenerator.terrain.terrainNoise.TerrainNoise.registerNoises;
 
-@SuppressWarnings("unused")
 public class Main extends JavaPlugin {
-
+    
+    public static Main getInstance() {
+        return JavaPlugin.getPlugin(Main.class);
+    }
+    
+    public static <O> O getOrDefault(O object, O def) {
+        return object == null ? def : object;
+    }
+    
+    public static boolean parseBool(String b) {
+        Boolean bo = parseBoolean(b);
+        return bo != null && bo;
+    }
+    public static Boolean parseBoolean(String b) {
+        if (b == null) {
+            return null;
+        }
+        String bo = b.toLowerCase();
+        
+        if (Arrays.asList("true", "yes", "y").contains(bo)) {
+            return true;
+        } else if (Arrays.asList("false", "no", "n").contains(bo)) {
+            return false;
+        } else {
+            return null;
+        }
+    }
+    
+    @SuppressWarnings("unused")
     public static void println(String text) {
-        ClassData d = ___8d4rd3148796d_Xaf();
+        Pair<Integer, String> d = ___8d4rd3148796d_Xaf();
         if (d == null) {
             System.out.println(text + " (null:null)");
             return;
         }
-        System.out.println(text + " (" + d.className + ":" + d.line + ")");
+        Bukkit.getLogger().log(Level.INFO,text + " (" + d.getLeft() + ":" + d.getRight() + ")");
     }
-    private static ClassData ___8d4rd3148796d_Xaf() {
+    
+    private static Pair<Integer, String> ___8d4rd3148796d_Xaf() {
         boolean thisOne = false;
         int thisOneCountDown = 1;
         StackTraceElement[] elements = Thread.currentThread().getStackTrace();
@@ -35,7 +69,7 @@ public class Main extends JavaPlugin {
             String methodName = element.getMethodName();
             int lineNum = element.getLineNumber();
             if (thisOne && (thisOneCountDown == 0)) {
-                return new ClassData(lineNum, element.getClassName());
+                return new Pair<>(lineNum, element.getClassName());
             } else if (thisOne) {
                 thisOneCountDown--;
             }
@@ -45,72 +79,64 @@ public class Main extends JavaPlugin {
         }
         return null;
     }
-
+    
+    public static void log(String s) {
+        log(Level.INFO, s);
+    }
+    
+    public static void log(Level l, String s) {
+        Bukkit.getLogger().log(l, "[TerrainGenerator] " + s);
+    }
+    
     @Override
     public void onEnable() {
-        /*changelog todo:
-        *
-        * make WorldGenerator ready
-        *
-        * */
-
+        
         /* filters
-        * TerrainGenData properties
-        * */
+         * TerrainGenData properties
+         */
+        
+        ConfigurationSerialization.registerClass(TreeTypes.TreeData.class, "TreeData");//todo register all other classes
+        ConfigurationSerialization.registerClass(AddLake.LakeData.class, "LakeData");
+        ConfigurationSerialization.registerClass(BiomeSettings.class, "BiomeSettings");
+        ConfigurationSerialization.registerClass(SimplexOctaveNoise.class, "SimplexOctaveNoise");
+        ConfigurationSerialization.registerClass(TerrainBlockData.class, "TerrainBlockData");
+        ConfigurationSerialization.registerClass(Pair.class, "Pair");
+        
+        GettingFiles.loadFiles();
+        
+        Permissions.loadPermissionConfig(getFiles("terrainData"));
 
-
-        new GettingFiles(this);
-
-        getCommand("terrain").setExecutor(new Terrain());
-        getCommand("terrain").setTabCompleter(new Terrain());
-        Bukkit.getPluginManager().registerEvents(new WorldEvents(), this);
-
+//        getCommand("terrain").setExecutor(new Terrain());
+        new Terrain();
+        
+        registerNoises(Flatlands::new, SimplexOctaveNoise::new);
+        
         registerModes(
-                new AddGrass(),
-                new AddHouse(),
-                new AddLava(),
-                new AddTrees(),
-                new AddWater(),
-                new Bedrock(),
-                new Layers(),
-                new StoneGen(),
-                new Top(),
-                new TopR(),
-                new TreeTypes());
-
-//        getServer().getScheduler().scheduleSyncDelayedTask(this, () -> {
-            initGenerators();
-//            Bukkit.getServer().getLogger().log(Level.INFO, "[" + this.getDescription().getName() + "] All TerrainGenerators are set up");
-            log("All TerrainGenerators are set up");
-            initTerrainWorlds();
-//            Bukkit.getServer().getLogger().log(Level.INFO, "[" + this.getDescription().getName() + "] All TerrainWorlds are set up");
-            log("All TerrainWorlds are set up");
-//        });
+                AddGrass::new,
+                AddHouse::new,
+                AddLava::new,
+                AddTrees::new,
+                AddWater::new,
+                Bedrock::new,
+                Layers::new,
+                StoneGen::new,
+                Top::new,
+                TopR::new,
+                TreeTypes::new,
+                AddLake::new,
+                TreeModifier::new);
+        
+        initGenerators();
+        log("All TerrainGenerators are set up");
+        initTerrainWorlds();
+        log("All TerrainWorlds are set up");
     }
-
+    
     @Override
     public void onDisable() {
-//        Logger.getLogger("Minecraft").log(Level.INFO, "[" + this.getDescription().getName() + "] Saving TerrainGenerators");
         log("Saving TerrainGenerators");
         saveGenerators();
         log("Saving TerrainWorlds");
         saveTerrainWorlds();
-    }
-
-    public static void log(String s) {
-        log(Level.INFO, s);
-    }
-    public static void log(Level l, String s) {
-        Bukkit.getLogger().log(l, "[TerrainGenerator] " + s);
-    }
-
-    private static class ClassData {
-        private final int line;
-        private final String className;
-
-        private ClassData(int line, String className) {
-            this.line = line;
-            this.className = className;
-        }
     }
 }

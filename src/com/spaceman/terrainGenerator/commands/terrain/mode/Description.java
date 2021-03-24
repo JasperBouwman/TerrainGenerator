@@ -1,115 +1,80 @@
 package com.spaceman.terrainGenerator.commands.terrain.mode;
 
-import com.spaceman.terrainGenerator.commands.CmdHandler;
+import com.spaceman.terrainGenerator.ColorFormatter;
+import com.spaceman.terrainGenerator.commandHander.ArgumentType;
+import com.spaceman.terrainGenerator.commandHander.EmptyCommand;
+import com.spaceman.terrainGenerator.commandHander.SubCommand;
 import com.spaceman.terrainGenerator.fancyMessage.Message;
-import com.spaceman.terrainGenerator.fancyMessage.events.HoverEvent;
-import com.spaceman.terrainGenerator.terrain.TerrainMode;
+import com.spaceman.terrainGenerator.terrain.terrainMode.TerrainMode;
+import com.spaceman.terrainGenerator.terrain.terrainMode.TerrainModeInverse;
+import com.spaceman.terrainGenerator.terrain.terrainMode.TerrainModeWaterLoggable;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedList;
 
+import static com.spaceman.terrainGenerator.ColorFormatter.formatError;
 import static com.spaceman.terrainGenerator.fancyMessage.TextComponent.textComponent;
-import static com.spaceman.terrainGenerator.fancyMessage.events.HoverEvent.hoverEvent;
+import static com.spaceman.terrainGenerator.terrain.terrainMode.TerrainMode.getModes;
 
-public class Description extends CmdHandler {
+public class Description extends SubCommand {
+    
+    public Description() {
+        EmptyCommand emptyCommand = new EmptyCommand();
+        emptyCommand.setCommandName("TerrainMode name", ArgumentType.REQUIRED);
+        emptyCommand.setCommandDescription(textComponent("This command is used to get information and default values of the given TerrainMode", ColorFormatter.infoColor));
+        addAction(emptyCommand);
+    }
+
     @Override
-    public String alias() {
-        return "des";
+    public Collection<String> tabList(Player player, String[] args) {
+        return getModes();
     }
 
     @Override
     public void run(String[] args, Player player) {
         //terrain mode description <TerrainMode name>
 
-        if (args.length > 2) {
+        if (args.length == 3) {
 
             TerrainMode mode = TerrainMode.getNewMode(args[2]);
             if (mode != null) {
                 Message message = new Message();
 
-                message.addText(textComponent("Description of ", ChatColor.DARK_AQUA));
-                message.addText(textComponent(mode.getModeName(), ChatColor.BLUE));
-                message.addText(textComponent(":\n", ChatColor.DARK_AQUA));
-                message.addText(textComponent(ChatColor.BLUE + mode.getModeDescription() + ChatColor.BLUE, ChatColor.BLUE));
-                message.addText(textComponent("\nIs final mode: ", ChatColor.DARK_AQUA));
+                message.addText(textComponent("Description of ", ColorFormatter.infoColor));
+                message.addText(textComponent(mode.getModeName(), ColorFormatter.varInfoColor));
+                message.addText(textComponent(": ", ColorFormatter.infoColor));
+                message.addText(textComponent(ColorFormatter.varInfoColor + mode.getModeDescription() + ColorFormatter.varInfoColor, ColorFormatter.varInfoColor));
+                message.addText(textComponent("\nIs final mode: ", ColorFormatter.infoColor));
                 if (mode.isFinalMode()) {
                     message.addText(textComponent("True", ChatColor.GREEN));
                 } else {
                     message.addText(textComponent("False", ChatColor.RED));
                 }
-                message.addText(textComponent("\nModeType: ", ChatColor.DARK_AQUA));
-                if (mode instanceof TerrainMode.DataBased) {
-                    message.addText(textComponent("DataBased", ChatColor.BLUE));
-                    message.addText(textComponent("\nDefault value: ", ChatColor.DARK_AQUA));
-
-                    Object o = ((TerrainMode.DataBased) mode).getModeData();
-                    if (o != null) {
-                        message.addText(textComponent(o.toString(), ChatColor.BLUE));
-                    } else {
-                        message.addText(textComponent("null", ChatColor.BLUE));
-                    }
-                } else if (mode instanceof TerrainMode.MapBased) {
-                    message.addText(textComponent("MapBased", ChatColor.BLUE));
-                    message.addText(textComponent("\nDefault value: ", ChatColor.DARK_AQUA));
-
-                    HashMap<?, ?> map = ((TerrainMode.MapBased) mode).getModeData();
-
-                    if (map != null) {
-                        boolean b = false;
-                        for (Object o : map.keySet()) {
-                            HoverEvent hEvent = hoverEvent("");
-
-                            if (map.get(o) instanceof Collection) {
-                                Collection c = (Collection) map.get(o);
-                                boolean b1 = false;
-                                for (Object v : c) {
-                                    hEvent.addText(textComponent(v.toString(), ChatColor.BLUE));
-
-                                    hEvent.addText(textComponent(", ", ChatColor.DARK_AQUA));
-                                    b1 = true;
-                                }
-                                if (b1) hEvent.removeLast();
-                            } else {
-                                hEvent.addText(textComponent(map.get(o).toString(), ChatColor.BLUE));
-                            }
-
-                            message.addText(textComponent(o.toString(), ChatColor.BLUE, hEvent));
-
-                            message.addText(textComponent(", ", ChatColor.DARK_AQUA));
-                            b = true;
-                        }
-                        if (b) message.removeLast();
-                    } else {
-                        message.addText(textComponent("null", ChatColor.BLUE));
-                    }
-                } else if (mode instanceof TerrainMode.ArrayBased) {
-                    message.addText(textComponent("ArrayBased", ChatColor.BLUE));
-                    message.addText(textComponent("\nDefault value: ", ChatColor.DARK_AQUA));
-
-                    LinkedList<?> list = ((TerrainMode.ArrayBased) mode).getModeData();
-                    if (list != null) {
-                        boolean b = false;
-                        for (Object o : list) {
-                            message.addText(textComponent(o + "", ChatColor.BLUE));
-                            message.addText(textComponent(", ", ChatColor.DARK_AQUA));
-                            b = true;
-                        }
-                        if (b) message.removeLast();
-                    } else {
-                        message.addText(textComponent("null", ChatColor.BLUE));
-                    }
+                message.addText(textComponent("\nIs inverse able mode: ", ColorFormatter.infoColor));
+                if (mode instanceof TerrainModeInverse) {
+                    message.addText(textComponent("True", ChatColor.GREEN));
+                } else {
+                    message.addText(textComponent("False", ChatColor.RED));
                 }
+                message.addText(textComponent("\nIs WaterLoggable mode: ", ColorFormatter.infoColor));
+                if (mode instanceof TerrainModeWaterLoggable) {
+                    message.addText(textComponent("True", ChatColor.GREEN));
+                } else {
+                    message.addText(textComponent("False", ChatColor.RED));
+                }
+                message.addText(textComponent("\nModeType: ", ColorFormatter.infoColor));
+                message.addText(textComponent(mode.modeType(), ColorFormatter.varInfoColor));
 
-
+                message.addText(textComponent("\nDefault value: ", ColorFormatter.infoColor));
+                message.addMessage(mode.dataAsStringWithHover());
+                
                 message.sendMessage(player);
             } else {
-                player.sendMessage(ChatColor.RED + "TerrainMode was not found");
+                player.sendMessage(formatError("TerrainMode %s was not found", args[2]));
             }
         } else {
-            player.sendMessage(ChatColor.RED + "Usage: " + ChatColor.DARK_RED + " /terrain mode description <TerrainMode name>");
+            player.sendMessage(formatError("Usage: %s", "/terrain mode description <TerrainMode name>"));
         }
     }
 }

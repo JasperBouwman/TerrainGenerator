@@ -1,31 +1,84 @@
 package com.spaceman.terrainGenerator.modes;
 
-import com.spaceman.terrainGenerator.terrain.*;
-import org.bukkit.ChatColor;
+import com.spaceman.terrainGenerator.terrain.TerrainBlockData;
+import com.spaceman.terrainGenerator.terrain.TerrainGenData;
+import com.spaceman.terrainGenerator.terrain.TerrainUtils;
+import com.spaceman.terrainGenerator.terrain.generators.TerrainGenerator;
+import com.spaceman.terrainGenerator.terrain.generators.WorldGenerator;
+import com.spaceman.terrainGenerator.terrain.terrainMode.DataMode;
+import com.spaceman.terrainGenerator.terrain.terrainMode.TerrainMode;
+import com.spaceman.terrainGenerator.terrain.terrainMode.TerrainModeInverse;
+import com.spaceman.terrainGenerator.terrain.terrainMode.TerrainModeWaterLoggable;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 
-import static com.spaceman.terrainGenerator.terrain.TerrainGenerator.GenData.*;
+import static com.spaceman.terrainGenerator.terrain.TerrainCore.setType;
+import static com.spaceman.terrainGenerator.terrain.generators.TerrainGenerator.GenData.*;
 
-public class Top extends TerrainMode.DataBased<TerrainBlockData> {
+public class Top extends DataMode<TerrainBlockData> implements TerrainModeInverse, TerrainModeWaterLoggable {
 
     public Top() {
         setModeData(new TerrainBlockData(Material.GRASS));
     }
 
+    private boolean inverse = false;
+
     @Override
-    public void saveMode(String savePath) {
-        TerrainUtils.saveDataTerrainBlockData(savePath, getModeData());
+    public boolean isInverse() {
+        return inverse;
     }
 
     @Override
-    public DataBased getMode(String savePath, DataBased templateMode) {
-        return TerrainUtils.getDataTerrainBlockData(savePath, templateMode);
+    public void setInverse(boolean inverse) {
+        this.inverse = inverse;
+    }
+
+    @Override
+    public Collection<String> tabListCreate(String[] args, Player player) {
+        return TerrainUtils.tabListCreateAndSetTerrainBlockData(args);
+    }
+
+    @Override
+    public Collection<String> tabListSet(String[] args, Player player) {
+        return TerrainUtils.tabListCreateAndSetTerrainBlockData(args);
+    }
+
+    @Override
+    public void saveMode(ConfigurationSection section) {
+        TerrainUtils.saveDataTerrainBlockData(section, getModeData());
+    }
+
+    @Override
+    public TerrainMode loadMode(ConfigurationSection section) {
+        return TerrainUtils.getDataTerrainBlockData(section, this);
+    }
+
+    @Override
+    public void setData(LinkedList<String> data, Player player) {
+        TerrainUtils.setDataTerrainBlockData(data, player, this);
+    }
+
+    @Override
+    public void setWaterLogged(LinkedList<String> data, Player player) {
+        TerrainUtils.setWaterLoggedTerrainBlockData(data, player, getModeData());
+    }
+
+    @Override
+    public Collection<String> tabListWaterLog(String[] args, Player player) {
+        return TerrainUtils.tabListWaterLogTerrainBlockData(args);
+    }
+
+    @Override
+    public String getInsertion() {
+        return "m=" + getModeData().getMaterial().name() +
+                ",d=" + getModeData().getBlockFace().name() +
+                ",w=" + getModeData().isWaterLogged();
     }
 
     @Override
@@ -35,34 +88,7 @@ public class Top extends TerrainMode.DataBased<TerrainBlockData> {
 
     @Override
     public String getModeDescription() {
-        return getModeName() + " is a TerrainMode that will chance the top layer to given material";
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    public void setData(LinkedList<String> data, Player player) {
-        if (data != null) {//todo add directional
-            if (data.size() > 0) {
-                TerrainBlockData is = getModeData();
-                if (is == null) {
-                    is = new TerrainBlockData(Material.GRASS);
-                }
-                if (data.get(0).toLowerCase().startsWith("material=")) {
-                    Material m = Material.getMaterial(data.get(0).toLowerCase().replace("material=", ""));
-                    if (m == null) {
-                        player.sendMessage(ChatColor.RED + "Given material is not a valid material");
-                        return;
-                    }
-                    is.setMaterial(m);
-                } else {
-                    player.sendMessage(ChatColor.RED + "Given data '" + data.get(0) + "' is not valid data, it must be 'material=STONE', where behind the = can be your value");
-                    return;
-                }
-                player.sendMessage(ChatColor.DARK_AQUA + "TerrainMode " + getModeName() + " is now set to " + is.toString());
-            } else {
-                player.sendMessage(ChatColor.RED + "Missing data");
-            }
-        }
+        return getModeName() + " is a TerrainMode that will change the top layer to given material";
     }
 
     @Override
@@ -72,20 +98,22 @@ public class Top extends TerrainMode.DataBased<TerrainBlockData> {
 
     @Override
     public void useMode(int x, int z, HashMap<String, HashMap<String, TerrainGenerator.GenData>> genStorage,
-                                            TerrainGenerator.LocData locData, TerrainGenData data, String savePath, HashMap<String, Object> genModeData, WorldGenerator.TerrainChunkData chunkData) {
+                        TerrainGenerator.LocData locData, TerrainGenData data, String savePath, HashMap<String, Object> genModeData, WorldGenerator.TerrainChunkData chunkData) {
 
-        TerrainGenerator.GenData genData = getGenData(x, z, data.getName() + savePath, genStorage);
-        int highest = getHighest(x, z, genStorage);
-        ArrayList<Integer> airPockets = getAirPockets(x, z, genStorage, genData.getStartGen(), highest);
+        if (!getModeData().getMaterial().equals(Material.STRUCTURE_VOID)) {
 
-        if (genData.getHeightGen() == highest && genData.getHeightGen() > 0 || airPockets.contains(genData.getHeightGen() + 1)) {
+            TerrainGenerator.GenData genData = getGenData(x, z, data.getName() + savePath, genStorage);
+            int highest = getHighest(x, z, genStorage);
 
-            if (!getModeData().getMaterial().equals(Material.STRUCTURE_VOID)) {
+            if (genData.getHeightGen() == highest && genData.getHeightGen() > 0 || getAirPockets(x, z, genStorage, genData.getStartGen(), highest).contains(genData.getHeightGen() + 1)) {
+
                 if (genData.getStartGen() < genData.getHeightGen()) {
+                    int y = (inverse ? genData.getStartGen() : genData.getHeightGen());
+
                     if (chunkData != null) {
-                        chunkData.setBlock(genData.getHeightGen(), getModeData().getMaterial());
+                        chunkData.setBlock(y, getModeData());
                     } else {
-                        setType(new Location(locData.getWorld(), x, genData.getHeightGen(), z).getBlock(), getModeData().getMaterial(), getModeData().getBlockFace());
+                        setType(new Location(locData.getWorld(), x, y, z).getBlock(), getModeData());
                     }
                 }
             }

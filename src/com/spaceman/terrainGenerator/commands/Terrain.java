@@ -1,339 +1,260 @@
 package com.spaceman.terrainGenerator.commands;
 
+import com.spaceman.terrainGenerator.commandHander.CommandTemplate;
+import com.spaceman.terrainGenerator.commandHander.HelpCommand;
 import com.spaceman.terrainGenerator.commands.terrain.*;
-import com.spaceman.terrainGenerator.commands.terrain.example.ExampleHandler;
-import com.spaceman.terrainGenerator.modes.AddGrass;
-import com.spaceman.terrainGenerator.modes.Bedrock;
-import com.spaceman.terrainGenerator.modes.Layers;
-import com.spaceman.terrainGenerator.modes.StoneGen;
-import com.spaceman.terrainGenerator.terrain.TerrainBlockData;
-import com.spaceman.terrainGenerator.terrain.TerrainGenData;
-import com.spaceman.terrainGenerator.terrain.TerrainGenerator;
-import com.spaceman.terrainGenerator.terrain.TerrainMode;
-import org.bukkit.ChatColor;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.block.BlockFace;
-import org.bukkit.block.data.Directional;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
+import com.spaceman.terrainGenerator.fancyMessage.Attribute;
+import com.spaceman.terrainGenerator.fancyMessage.Message;
+import com.spaceman.terrainGenerator.fancyMessage.events.ClickEvent;
+import com.spaceman.terrainGenerator.fancyMessage.events.HoverEvent;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
-import org.bukkit.util.StringUtil;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
 
+import static com.spaceman.terrainGenerator.ColorFormatter.*;
 import static com.spaceman.terrainGenerator.Permissions.hasPermission;
-import static com.spaceman.terrainGenerator.terrain.TerrainGenData.terrainGenData;
-import static com.spaceman.terrainGenerator.terrain.TerrainGenerator.getGen;
-import static com.spaceman.terrainGenerator.terrain.TerrainMode.getModes;
-import static com.spaceman.terrainGenerator.terrain.WorldGenerator.generateWorld;
+import static com.spaceman.terrainGenerator.fancyMessage.TextComponent.textComponent;
+import static com.spaceman.terrainGenerator.fancyMessage.events.HoverEvent.hoverEvent;
 
-public class Terrain implements CommandExecutor, TabCompleter {
-
-    private final ArrayList<CmdHandler> actions = new ArrayList<>();
-
+public class Terrain extends CommandTemplate {
+    
     public Terrain() {
-        actions.add(new AddGen());
-        actions.add(new Create());
-        actions.add(new Delete());
-        actions.add(new Edit());
-        actions.add(new Generate());
-        actions.add(new GetData());
-        actions.add(new Help());
-        actions.add(new Mode());
-        actions.add(new com.spaceman.terrainGenerator.commands.terrain.List());
-        actions.add(new RemoveGen());
-        actions.add(new SetGen());
-        actions.add(new Example());
-        actions.add(new com.spaceman.terrainGenerator.commands.terrain.World());
+        super(true, new CommandDescription(null, "The command for creating custom terrain/worlds", null));
     }
-
+    
     @Override
-    public boolean onCommand(CommandSender commandSender, Command command, String s, String[] args) {
+    public void registerActions() {
+        this.actions = new ArrayList<>();
+        addAction(new Create());
+        addAction(new Delete());
+        addAction(new Gens());
+        addAction(new Edit());
+        addAction(new Generate());
+        addAction(new GetData());
+        addAction(new Mode());
+        addAction(new com.spaceman.terrainGenerator.commands.terrain.List());
+        addAction(new com.spaceman.terrainGenerator.commands.terrain.World());
+        addAction(new SafeToEdit());
+        addAction(new External());
+        addAction(new Reload());
+        addAction(new Clone());
+        addAction(new Noise());
+        addAction(new BiomeSettings());
+        HelpCommand help = new HelpCommand(this);
+        
+        Message helpTerrainMode = new Message();
+        helpTerrainMode.addText(textComponent("A TerrainMode is a function that is used to decorate your terrain, " +
+                "such as tree generation or adding grass/flowers to your terrain. A ", infoColor));
+        helpTerrainMode.addText(textComponent("final TerrainMode", varInfoColor));
+        helpTerrainMode.addText(textComponent(" is a TerrainMode that is used when all the terrain is generated so it can use the final outcome. " +
+                "The TerrainMode ", infoColor));
+        helpTerrainMode.addText(textComponent("top", varInfoColor));
+        helpTerrainMode.addText(textComponent(" edits the top layer of the terrain, this does not use the final outcome and is therefore not a ", infoColor));
+        helpTerrainMode.addText(textComponent("final TerrainMode", varInfoColor));
+        helpTerrainMode.addText(textComponent(". You have different ", infoColor));
+        helpTerrainMode.addText(textComponent("ModeTypes", varInfoColor));
+        helpTerrainMode.addText(textComponent(" (", infoColor));
+        helpTerrainMode.addText(textComponent("DateMode", varInfoColor,
+                new HoverEvent(textComponent("A DataMode stores only 1 object, however this object can make use of multiple sub-objects", infoColor))));
+        helpTerrainMode.addText(textComponent(", ", infoColor));
+        helpTerrainMode.addText(textComponent("ArrayMode", varInfoColor,
+                new HoverEvent(textComponent("A ArrayMode stores multiple objects in a list, each object can make use of multiple sub-objects", infoColor))));
+        helpTerrainMode.addText(textComponent(" and ", infoColor));
+        helpTerrainMode.addText(textComponent("MapMode", varInfoColor,
+                hoverEvent(textComponent("A MapMode stores multiple objects in a map. A map stores its values in a list using keys, example:\n", infoColor),
+                        textComponent("1", varInfoColor), textComponent(" : ", infoColor), textComponent("one,\n", varInfoColor),
+                        textComponent("2", varInfoColor), textComponent(" : ", infoColor), textComponent("two,\n", varInfoColor),
+                        textComponent("3", varInfoColor), textComponent(" : ", infoColor), textComponent("three", varInfoColor)
+                )));
+        helpTerrainMode.addText(textComponent("). Some TerrainModes have extras, like ", infoColor));
+        helpTerrainMode.addText(textComponent("Inverse", varInfoColor));
+        helpTerrainMode.addText(textComponent(" or ", infoColor));
+        helpTerrainMode.addText(textComponent("WaterLoggable", infoColor));
+        helpTerrainMode.addText(textComponent(". Inverse usually means that the mode is flipped upside down, hover ", infoColor));
+        helpTerrainMode.addText(textComponent("here", infoColor, hoverEvent(textComponent("Top", varInfoColor),
+                textComponent(" is a TerrainMode that changes the top layer of the TerrainGenerator, " +
+                        "when inverted it changes the bottom layer of the TerrainGenerator", infoColor))));
+        helpTerrainMode.addText(textComponent(" for example.", infoColor));
+        helpTerrainMode.addText(textComponent(" The WaterLoggable extra is more as a handy extra, " +
+                "this is used to the block in the TerrainMode waterlogged or not. " +
+                "There are 3 types of water logged, ", infoColor));
+        helpTerrainMode.addText(textComponent("true", varInfoColor,
+                new HoverEvent(textComponent("Block is water logged (of possible)", infoColor))));
+        helpTerrainMode.addText(textComponent(", ", infoColor));
+        helpTerrainMode.addText(textComponent("false", varInfoColor,
+                new HoverEvent(textComponent("Block is not water logged", infoColor))));
+        helpTerrainMode.addText(textComponent(" and ", infoColor));
+        helpTerrainMode.addText(textComponent("null", varInfoColor,
+                new HoverEvent(textComponent("Block used its default state, this is the default state", infoColor))));
+        helpTerrainMode.addText(textComponent(". There is a way to create your own TerrainMode, click ", infoColor));
+        String terrainModeTutorialURL = "https://github.com/JasperBouwman/TerrainGenerator/tree/master/src/com/spaceman/terrainGenerator/terrain/terrainMode/Tutorial.md";
+        helpTerrainMode.addText(textComponent("here", varInfoColor,
+                new HoverEvent(textComponent(terrainModeTutorialURL, infoColor)), ClickEvent.openUrl(terrainModeTutorialURL)).setInsertion(terrainModeTutorialURL));
+        helpTerrainMode.addText(textComponent(" to go to the tutorial", infoColor));
+        help.addExtraHelp("TerrainMode", helpTerrainMode);
+        
+        Message helpTerrainGenerator = new Message();
+        helpTerrainGenerator.addText(textComponent("A TerrainGenerator is the object that creates the terrain that you have configured, ", infoColor));
+        helpTerrainGenerator.addText(textComponent("this contains the properties of the main block for the terrain and some terrain settings. ", infoColor));
+        helpTerrainGenerator.addText(textComponent("The shape of the terrain can be edited with the ", infoColor));
+        helpTerrainGenerator.addText(textComponent("NoiseGenerator", varInfoColor, new HoverEvent(textComponent("/terrain help NoiseGenerator")), ClickEvent.runCommand("/terrain help NoiseGenerator")));
+        helpTerrainGenerator.addText(textComponent(". For extra population or modulation you can add ", infoColor));
+        helpTerrainGenerator.addText(textComponent("TerrainModes", varInfoColor, new HoverEvent(textComponent("/terrain help TerrainMode")), ClickEvent.runCommand("/terrain help TerrainMode")));
+        helpTerrainGenerator.addText(textComponent(". You can also add additional TerrainGenerators to your main generator, the '", infoColor));
+        helpTerrainGenerator.addText(textComponent("gens", varInfoColor, new HoverEvent(textComponent("/terrain gens list <name>"))));
+        helpTerrainGenerator.addText(textComponent("' list is the list of TerrainGenerators that are also generated when the main TerrainGenerator is generated. " +
+                "The first TerrainGenerator on the list is the first runner up to generate, " +
+                "when the current one is done the first runner up is then generated, and than the second, ect. " +
+                "When the 'fromTop' date type is true the next generator will start at the highest point, " +
+                "when false it will generate around all the previous generated terrain. ", infoColor));
+        helpTerrainGenerator.addText(textComponent("One important thing about multiple generated is that in the generation of the terrain " +
+                "the TerrainGenerators in the gens list wont overwrite previous generated TerrainGenerators in the gens list", infoColor, Attribute.BOLD));
+        help.addExtraHelp("TerrainGenerator", helpTerrainGenerator);
+        
+        Message helpTerrainWorld = new Message();
+        helpTerrainWorld.addText(textComponent("A TerrainWorld is a world generated by a TerrainGenerator. " +
+                "When a TerrainGenerator is used to generate a TerrainWorld it is not 'safe to edit'. " +
+                "You can Still edit it, but at the next chunk generation the chunks may not compliment each other. " +
+                "The tablist when you create a new TerrainWorld shows you the worlds that exist but are not loaded in, " +
+                "its faster to recycle a world, but the chunk are not regenerated. " +
+                "When creating a new world the server may crash during generation of the spawn chunks. " +
+                "But when the server is restarting it will continue the generation. " +
+                "When the server reloads all players are teleported out of all TerrainWorlds, and when the server loads back up " +
+                "those players are teleported back. This is to reload the world inside the server", infoColor));
+        help.addExtraHelp("TerrainWorld", helpTerrainWorld);
+        
+        Message helpNoiseGenerator = new Message();
+        helpNoiseGenerator.addText(textComponent("The NoiseGenerator is the generator that creates the surface for the TerrainGenerator. " +
+                "You can edit the TerrainNoise with the command ", infoColor));
+        helpNoiseGenerator.addText(textComponent("/terrain noise", varInfoColor));
+        helpNoiseGenerator.addText(textComponent(", Flatlands is faster to generate when you need a flat surface. " +
+                "There is a way to create your own noise generator, click ", infoColor));
+        String noiseGeneratorTutorialURL = "https://github.com/JasperBouwman/TerrainGenerator/tree/master/src/com/spaceman/terrainGenerator/terrain/terrainNoise/Tutorial.md";
+        helpNoiseGenerator.addText(textComponent("here", varInfoColor,//todo create tutorial
+                new HoverEvent(textComponent(noiseGeneratorTutorialURL, infoColor)), ClickEvent.openUrl(noiseGeneratorTutorialURL)).setInsertion(noiseGeneratorTutorialURL));
+        helpNoiseGenerator.addText(textComponent(" to go to the tutorial", infoColor));
+        help.addExtraHelp("NoiseGenerator", helpNoiseGenerator);
+        
+        Message helpExternal = new Message();
+        helpExternal.addText(textComponent("Files in the folder '", infoColor));
+        helpExternal.addText(textComponent(".../plugins/TerrainGenerator/etf", varInfoColor));
+        helpExternal.addText(textComponent("' should be all .yml files. These files are External Terrain Files. " +
+                "Here are the External TerrainGenerators saved by using: ", infoColor));
+        helpExternal.addText(textComponent("/terrain external export <file name> [TerrainGenerator...]", varInfoColor));
+        helpExternal.addText(textComponent(". These TerrainGenerators can't be edited, but are still fully usable. " +
+                "External Terrain Files are mostly used to back-up TerrainGenerators, or to send TerrainGenerators to other people", infoColor));
+        help.addExtraHelp("External", helpExternal);
+        
+        Message helpBiome = new Message();
+        helpBiome.addText(textComponent("BiomeSettings are the settings that are used to add biomes to your terrain/world. " +
+                "The biomes are calculated within squares, each of these squares is a section, the size can be edited with the ", infoColor));
+        helpBiome.addText(textComponent("section size", varInfoColor));
+        helpBiome.addText(textComponent(". In each of these sections are biomes randomly generated. " +
+                "The amount of biomes per section is set by the ", infoColor));
+        helpBiome.addText(textComponent("biome scale", varInfoColor));
+        helpBiome.addText(textComponent(", the smaller the biome scale the larger the biomes are. " +
+                "The biome size can be edited for each biome in the biome setting of the TerrainGenerator. " +
+                "The larger the size of the biome the more chances the biome is selected in the random biome generation. " +
+                "Just like the biome size the biome weight can be edited for each biome. " +
+                "The biome size is sort of inverted multiplied by the weight (the smaller the weight, the larger the biome), " +
+                "if all biome weights are different the smoother and natural the biomes intersect.", infoColor));
+        help.addExtraHelp("BiomeSettings", helpBiome);
+        
+        addAction(help);
+    }
+    
+    @Override
+    public boolean execute(CommandSender commandSender, String command, String[] args) {
         if (!(commandSender instanceof Player)) {
-            commandSender.sendMessage("You muse be a player to use this plugin/command");
+            commandSender.sendMessage("You must be a player to use this plugin/command");
             return false;
         }
-
+    
         Player player = (Player) commandSender;
-
-
+    
         if (!hasPermission(player, "TerrainGenerator.All")) {
             return false;
         }
-
-        //terrain
-        //terrain lock <name>
+    
         //terrain create <name> [data...]
         //terrain delete <name>
-        //terrain getData <name>
         //terrain generate <name> <x> <z>
-        //terrain list
+        //terrain getData <name>
+        //terrain list [own|all]
         //terrain edit <name> <data...>
-        //terrain addGen <name> <name>
-        //terrain removeGen <name> <name>
-        //terrain setGen <name> <name> <number>
+        //terrain reload
+        //terrain safeToEdit [TerrainGenerator]
+        //terrain clone <old name> <new name>
+        //terrain gens add <name> <name>
+        //terrain gens remove <name> <name>
+        //terrain gens set <name> <name> <number>
+        //terrain gens list <name>
+        //terrain noise set <name> <noise> [data...]
+        //terrain noise edit <name> <data...>
+        //terrain noise list
+        //terrain noise getData <name>
+        //terrain noise description <noise>
+        //terrain noise clone <name from> <name to>
         //terrain mode add <name> <TerrainMode name> [data...]
         //terrain mode remove <name> <TerrainMode name>
-        //terrain mode set <name> <TerrainMode name> <number> [data...]
-        //terrain mode copy <name> <name> <TerrainMode name>
+        //terrain mode set <name> <TerrainMode name> <number> [data... (only for new TerrainModes)]
         //terrain mode edit <name> <TerrainMode name> add <data...> {for ArrayBased and MapBased only}
         //terrain mode edit <name> <TerrainMode name> remove <data...> {for ArrayBased and MapBased only}
         //terrain mode edit <name> <TerrainMode name> set <number> <data...> {for ArrayBased and MapBased only}
         //terrain mode edit <name> <TerrainMode name> set <data...> {for DataBased only}
         //terrain mode getData <name> <TerrainMode name>
         //terrain mode description <TerrainMode name>
-        //terrain mode list
+        //terrain mode inverse <name> <TerrainMode name> [boolean]
+        //terrain mode waterLog <name> <TerrainMode name> set <data...>
+        //terrain mode clone <name from> <mode> <name to>
+        //terrain mode list [name]
+        //terrain biomeSettings sectionSize <name> [size]
+        //terrain biomeSettings biomeScale <name> [size]
+        //terrain biomeSettings seed <name> [seed]
+        //terrain biomeSettings add <name> <name> [data...]
+        //terrain biomeSettings remove <name> <name>
+        //terrain biomeSettings getData <name> [name]
+        //terrain biomeSettings weight <name> own [weight]
+        //terrain biomeSettings weight <name> get <name>
+        //terrain biomeSettings weight <name> set <name> <weight>
+        //terrain biomeSettings size <name> own [size]
+        //terrain biomeSettings size <name> get <name>
+        //terrain biomeSettings size <name> set <name> <size>
+        //terrain world create <world name> <name> [data...]
+        //terrain world unload <TerrainWorld> [delete]
+        //terrain world list
+        //terrain world tp [world name]
+        //terrain world regenerate [<x1> <z1> <x2> <z2>]
+        //terrain world autoLoad <world name> [autoLoad]
+        //terrain world worldInfo
+        //terrain external export <fileName> [TerrainGenerator...]
+        //terrain external import <fileName> [TerrainGenerator...]
+        //terrain external unload <fileName> [delete]
+        //terrain external load <fileName>
+        //terrain external list [file...]
         //terrain help
-        //terrain example <example name>
-
-        //terrain world create <world name> <name>
-        //terrain world delete <world name>
-
-
+        //terrain help <page>
+        //terrain help terrain <sub-command...>
+        //terrain help <extra data>
+        
+        /*
+        todo
+          fix randomness
+        todo create biome transition
+          terrain biomeSettings transition <name> set <gen name> <transition type>
+          terrain biomeSettings transition <name> edit <gen name> <data...>
+          terrain biomeSettings transition <name> get <gen name>
+        */
+    
         if (args.length == 0) {
-            actions.get(6).run(args, player);
-
-//            int a = player.getLocation().getBlockX() - 5;
-//            int b = player.getLocation().getBlockY() + 1;
-//            int c = player.getLocation().getBlockZ() - 5;
-//            TerrainGenerator.LocData locData = new TerrainGenerator.LocData(player.getLocation(), 1, 1);
-//            int startHouse = player.getLocation().getBlockY();
-//
-//            wallLog(startHouse, locData, a, c);
-//            wallLogSide(startHouse, locData, a, c);
-//            wallSide(locData, a, b, c);
-//            ceilingStairs(locData, a, b, c);
-//            ceilingSupport(locData, a, b, c);
-//            setDoor(locData, a, b, c);
-
-
+            getAction("help").run(args, player);
             return false;
         }
-
-        if (args.length == 2 && args[1].equalsIgnoreCase("world")) {
-
-            TerrainGenData d3 = terrainGenData("d3");
-            d3.setStart(60);
-            d3.setHeight(110);
-            d3.setTerrainBlockData(new TerrainBlockData(Material.SNOW_BLOCK));
-            d3.setSeed(435678);
-            Layers newLayers4 = new Layers();
-            LinkedHashMap<TerrainBlockData, Integer> layers4 = new LinkedHashMap<>();
-            layers4.put(new TerrainBlockData(Material.SNOW_BLOCK), 5);
-            layers4.put(new TerrainBlockData(Material.STONE), 100);
-            newLayers4.setModeData(layers4);
-            d3.addMode(newLayers4);
-            Bedrock bedrock = new Bedrock();
-            bedrock.setModeData(true);
-            d3.addMode(bedrock);
-
-            TerrainGenData d1 = terrainGenData("d1");
-            d1.setSeed(34856732);
-            d1.setTerrainBlockData(new TerrainBlockData(Material.STONE));
-            d1.setStart(60);
-            d1.setHeight(100);
-            d1.setMultitude(30);
-            LinkedHashMap<TerrainBlockData, Integer> layers1 = new LinkedHashMap<>();
-            layers1.put((new TerrainBlockData(Material.COBBLESTONE)), 4);
-            layers1.put((new TerrainBlockData(Material.DIRT)), 3);
-            Layers newLayers1 = new Layers();
-            newLayers1.setModeData(layers1);
-            d1.addMode(newLayers1);
-            StoneGen newStoneGen1 = new StoneGen();
-            newStoneGen1.setModeData(d3.getName());
-            d1.addMode(newStoneGen1);
-//
-            TerrainGenData d2 = terrainGenData("d2");
-            d2.setSeed(58736785);
-            d2.setTerrainBlockData(new TerrainBlockData(Material.ICE));
-            d2.setStart(d1.getStart());
-            d2.setMultitude(10);
-            d2.setHeight(d1.getHeight() - 10);
-//
-            TerrainGenData floor = terrainGenData("floor");
-            floor.setStart(60);
-            floor.setHeight(d1.getHeight());
-            floor.setAmplitude(0.1);
-            floor.setMultitude(d1.getMultitude());
-//            floor.setTerrainBlockData(new TerrainBlockData(Material.DIRT));
-
-            LinkedHashMap<TerrainBlockData, Integer> layers3 = new LinkedHashMap<>();
-            layers3.put((new TerrainBlockData(Material.GRASS_BLOCK)), 1);
-            layers3.put((new TerrainBlockData(Material.DIRT)), 3);
-            layers3.put((new TerrainBlockData(Material.STONE)), 100);
-            Layers newLayers3 = new Layers();
-            newLayers3.setModeData(layers3);
-            floor.addMode(newLayers3);
-
-            LinkedHashMap<TerrainBlockData, Integer> addGrass = new LinkedHashMap<>();
-            addGrass.put((new TerrainBlockData(Material.TALL_GRASS)), 1);
-            addGrass.put((new TerrainBlockData(Material.STRUCTURE_VOID)), 3);
-            AddGrass newAddGrass = new AddGrass();
-            newAddGrass.setModeData(addGrass);
-            floor.addMode(newAddGrass);
-
-            floor.addMode(new Bedrock());
-
-            StoneGen newStoneGen = new StoneGen();
-            newStoneGen.setModeData(d1.getName());
-            floor.addMode(newStoneGen);
-            floor.addGenerator(d2.getName());
-
-            org.bukkit.World newWorld = generateWorld("tmpWorld_" + args[0], floor.getName());
-
-            player.teleport(new Location(newWorld, 0, 100, 0));
-
-            return false;
+    
+        if (!this.runCommands(args[0], args, player)) {
+            player.sendMessage(formatError("%s is not a sub-command", args[0]));
         }
-
-        for (CmdHandler action : actions) {
-            if (args[0].equalsIgnoreCase(action.getClass().getSimpleName()) ||
-                    (action.alias() != null && action.alias().equalsIgnoreCase(args[0]))) {
-                action.run(args, player);
-                return false;
-            }
-        }
-        player.sendMessage(ChatColor.RED + args[0] + " is not a sub-command");
-
         return false;
-    }
-
-    @Override
-    public List<String> onTabComplete(CommandSender commandSender, Command command, String s, String[] args) {
-
-        ArrayList<String> list = new ArrayList<>();
-
-        //terrain
-        if (args.length == 1) {
-            for (CmdHandler cmd : actions) list.add(cmd.getClass().getSimpleName().toLowerCase());
-            return StringUtil.copyPartialMatches(args[0], list, new ArrayList<>(list.size()));
-        }
-        if (args.length == 2) {
-            //terrain delete
-            //terrain getData
-            //terrain generate
-            //terrain edit
-            //terrain addGen
-            //terrain removeGen
-            //terrain setGen
-            if (args[0].equalsIgnoreCase("delete") || args[0].equalsIgnoreCase("getData") || args[0].equalsIgnoreCase("generate") ||
-                    args[0].equalsIgnoreCase("edit") || args[0].equalsIgnoreCase("addGen") || args[0].equalsIgnoreCase("removeGen") ||
-                    args[0].equalsIgnoreCase("setGen")) {
-                return StringUtil.copyPartialMatches(args[1], TerrainGenerator.terrainGenData.keySet(), new ArrayList<>(TerrainGenerator.terrainGenData.keySet().size()));
-            }
-            //terrain mode
-            if (args[0].equalsIgnoreCase("mode")) {
-                list.addAll(Arrays.asList("add", "remove", "set", "copy", "edit", "getData", "description", "list"));
-                return StringUtil.copyPartialMatches(args[1], list, new ArrayList<>(list.size()));
-            }
-            //terrain example
-            if (args[0].equalsIgnoreCase("example")) {
-                for (ExampleHandler cmd : ExampleHandler.getExamples()) {
-                    list.add(cmd.name());
-                }
-                return StringUtil.copyPartialMatches(args[1], list, new ArrayList<>(list.size()));
-            }
-        }
-        if (args.length == 3) {
-            //terrain create <name>
-            //terrain edit <name>
-            if (args[0].equalsIgnoreCase("create") || args[0].equalsIgnoreCase("edit")) {
-                //TerrainGenData properties
-                list.addAll(Arrays.asList("frequency=", "amplitude=", "multitude=", "scale=", "octaves=", "height=", "seed=", "fromTop=", "start=", "material=", "direction=", "biome="));
-                return StringUtil.copyPartialMatches(args[2], list, new ArrayList<>(list.size()));
-            }
-            //terrain addGen <name>
-            //terrain setGen <name>
-            else if (args[0].equalsIgnoreCase("addGen") || args[0].equalsIgnoreCase("setGen")) {
-                return StringUtil.copyPartialMatches(args[2], TerrainGenerator.terrainGenData.keySet(), new ArrayList<>(TerrainGenerator.terrainGenData.keySet().size()));
-            }
-            //terrain removeGen <name>
-            else if (args[0].equalsIgnoreCase("removeGen")) {
-                TerrainGenData data = getGen(args[1]);
-                if (data != null) {
-                    list.addAll(data.getGenerators());
-                    return StringUtil.copyPartialMatches(args[2], list, new ArrayList<>(list.size()));
-                }
-            }
-            //terrain mode add
-            //terrain mode remove
-            //terrain mode set
-            //terrain mode copy
-            //terrain mode edit
-            //terrain mode getData
-            if (args[0].equalsIgnoreCase("mode")) {
-                if (args[1].equalsIgnoreCase("add") || args[1].equalsIgnoreCase("remove") || args[1].equalsIgnoreCase("set") ||
-                        args[1].equalsIgnoreCase("edit") || args[1].equalsIgnoreCase("getData") || args[1].equalsIgnoreCase("copy")) {
-                    return StringUtil.copyPartialMatches(args[2], TerrainGenerator.terrainGenData.keySet(), new ArrayList<>(TerrainGenerator.terrainGenData.keySet().size()));
-                }
-            }
-            //terrain mode description
-            if (args[0].equalsIgnoreCase("mode")) {
-                if (args[1].equalsIgnoreCase("description")) {
-                    list.addAll(getModes());
-                    return StringUtil.copyPartialMatches(args[2], list, new ArrayList<>(list.size()));
-                }
-            }
-        }
-        if (args.length == 4) {
-            //terrain mode add <name>
-            //terrain mode remove <name>
-            //terrain mode set <name>
-            //terrain mode edit <name>
-            if (args[0].equalsIgnoreCase("mode")) {
-                if (args[1].equalsIgnoreCase("add") || args[1].equalsIgnoreCase("remove") || args[1].equalsIgnoreCase("set") ||
-                        args[1].equalsIgnoreCase("edit")) {
-                    list.addAll(getModes());
-                    return StringUtil.copyPartialMatches(args[3], list, new ArrayList<>(list.size()));
-                }
-            }
-            //terrain mode copy <name>
-            if (args[0].equalsIgnoreCase("mode")) {
-                if (args[1].equalsIgnoreCase("copy")) {
-                    return StringUtil.copyPartialMatches(args[3], TerrainGenerator.terrainGenData.keySet(), new ArrayList<>(TerrainGenerator.terrainGenData.keySet().size()));
-                }
-            }
-            //terrain mode getData <name>
-            if (args[0].equalsIgnoreCase("mode")) {
-                if (args[1].equalsIgnoreCase("getData")) {
-                    TerrainGenData data = getGen(args[2]);
-                    if (data != null) {
-                        for (TerrainMode o : data.getModes()) {
-                            list.add(o.getModeName());
-                        }
-                        return StringUtil.copyPartialMatches(args[3], list, new ArrayList<>(list.size()));
-                    }
-                }
-            }
-        }
-        if (args.length == 5) {
-            //terrain mode copy <name> <name>
-            if (args[0].equalsIgnoreCase("mode")) {
-                if (args[1].equalsIgnoreCase("copy")) {
-                    TerrainGenData data = getGen(args[3]);
-                    if (data != null) {
-                        for (TerrainMode o : data.getModes()) {
-                            list.add(o.getModeName());
-                        }
-                        return StringUtil.copyPartialMatches(args[4], list, new ArrayList<>(list.size()));
-                    }
-                }
-            }
-            //terrain mode edit <name> <TerrainMode name>
-            if (args[0].equalsIgnoreCase("mode")) {
-                if (args[1].equalsIgnoreCase("edit")) {
-                    list.addAll(Arrays.asList("add", "remove", "set"));
-                    return StringUtil.copyPartialMatches(args[4], list, new ArrayList<>(list.size()));
-                }
-            }
-        }
-
-        return list;
     }
 }

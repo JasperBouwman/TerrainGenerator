@@ -1,22 +1,17 @@
 package com.spaceman.terrainGenerator.fileHander;
 
-import org.bukkit.plugin.java.JavaPlugin;
-
 import java.util.Collection;
 import java.util.HashMap;
 
 public class GettingFiles {
 
-    public static JavaPlugin p;
-    private static HashMap<String, Files> list;
+    private static HashMap<String, Files> list = new HashMap<>();
 
-    public GettingFiles(JavaPlugin main) {
-
+    public static void loadFiles() {
         list = new HashMap<>();
-        p = main;
 
-        list.put("terrainData", new Files(main, "terrainData.yml"));
-        list.put("worldData", new Files(main, "worldData.yml"));
+        list.put("terrainData", new Files("terrainData.yml"));
+        list.put("worldData", new Files("worldData.yml"));
 
     }
 
@@ -32,7 +27,7 @@ public class GettingFiles {
         return list.values();
     }
 
-    public static void reloadFile(String file, JavaPlugin p) {
-        list.put(file.replace(".yml", ""), new Files(p, file + (file.endsWith(".yml") ? "" : ".yml")));
+    public static void reloadFile(String file) {
+        list.put(file.replace(".yml", ""), new Files(file + (file.endsWith(".yml") ? "" : ".yml")));
     }
 }
